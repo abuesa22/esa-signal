@@ -1,0 +1,59 @@
+━━━━━━━━━━━━━━━━━━━━━━
+🌙 <b>ESA SIGNAL — EVENING BRIEF</b>
+📅 Wednesday 13 May 2026 | 11:32 PM AEST
+━━━━━━━━━━━━━━━━━━━━━━
+
+📉 <b>US MARKET CLOSE</b>
+┌─────────────────────
+│ S&amp;P 500 $7,398         -0.04% 📉
+│ NASDAQ     $26,141        +0.20% 📈
+│ DOW        $49,534        -0.45% 📉
+└─────────────────────
+
+📊 <b>SECTOR PERFORMANCE</b>
+┌─────────────────────
+│ 🟢 Technology         +0.77%
+│ 🟢 Materials          +0.06%
+│ 🔴 Energy             -0.10%
+│ 🔴 Industrials        -0.17%
+│ 🔴 Comm Services      -0.35%
+│ 🔴 Healthcare         -0.40%
+│ 🔴 Consumer Disc      -0.42%
+│ 🔴 Real Estate        -0.90%
+│ 🔴 Financials         -1.00%
+│ 🔴 Utilities          -1.29%
+└─────────────────────
+
+📋 <b>EARNINGS</b>
+│ 📅 SHAZ (2026-05-15) — EPS: $-0.89 | Rev: $272,003 | Q1 2026
+│ 📅 SY (2026-05-15) — EPS: $-0.75 | Rev: $427.8M | Q1 2026
+│ 📅 NXGL (2026-05-15) — EPS: $-0.07 | Rev: $4.0M | Q1 2026
+│ 📅 AZ (2026-05-15) — EPS: $-0.17 | Rev: $5.8M | pre-mkt | Q1 2026
+│ 📅 ARAI (2026-05-15) — EPS: $-0.12 | Rev: $0 | pre-mkt | Q1 2026
+
+🏦 <b>NEW IPO FILINGS</b>
+│ • Research Alliance Corp III  (RACC) — S-1/A filed 2026-05-13
+│ • Nauticus Robotics, Inc.  (KITT, KITTW) — S-1 filed 2026-05-13
+│ • GSR V Acquisition Corp.  (GSRV) — S-1/A filed 2026-05-12
+
+🪙 <b>CRYPTO 24H</b>
+┌─────────────────────
+│ BTC     $80,134        -0.60% 📉
+│ ETH     $2,281         -0.01% 📉
+│ TOTAL MCAP  $2760.58B  -0.12% 📉
+│ BTC DOM     58.2%
+└─────────────────────
+
+🔥 <b>HOT NARRATIVES TOMORROW</b>
+│ 1. Privacy coins resurgence
+│ 2. AI/DeFi infrastructure
+│ 3. Meme coin momentum
+
+🤖 <b>AI MARKET OUTLOOK</b>
+┌─────────────────────
+│ Markets show mixed signals with equity indices holding near highs despite crypto weakness, suggesting cautious consolidation ahead of key earnings and macro data releases. Primary risk remains elevated valuations across both traditional and digital assets, with Bitcoin's failure to hold $80K potentially signaling broader risk-off sentiment brewing beneath surface stability. Crypto exposure should be defensive with profit-taking on momentum plays while avoiding FOMO on privacy/meme narratives that lack institutional backing during this fragile market structure.
+└─────────────────────
+
+━━━━━━━━━━━━━━━━━━━━━━
+<i>ESA Signal — Signals only. You execute.</i>
+━━━━━━━━━━━━━━━━━━━━━━
