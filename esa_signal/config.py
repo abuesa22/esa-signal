@@ -27,7 +27,7 @@ CLAUDE_MODEL = "claude-sonnet-4-6"
 # ── Scanner thresholds ────────────────────────────────────────────────────────
 SCAN_INTERVAL_MINUTES = 5
 RESCAN_INTERVAL_MINUTES = 10     # re-examine same token after this many minutes
-MAX_TOKENS_PER_SCAN = 60         # cap tokens processed per cycle
+MAX_TOKENS_PER_SCAN = 25         # cap tokens processed per cycle
 MIN_LIQUIDITY_USD = 5_000
 MAX_MARKET_CAP_USD = 15_000_000  # raised from 10M — catch mid-nano caps too
 MIN_VOLUME_24H_USD = 20_000

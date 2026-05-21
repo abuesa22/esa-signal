@@ -60,18 +60,18 @@ def _fetch_trending_tokens() -> list[dict]:
 
 def _fetch_token_pairs(token_address: str) -> list[dict]:
     rate_limiter.wait("dexscreener")
-    data = http_get(f"{DEXSCREENER_TOKENS}/{token_address}", timeout=12)
+    data = http_get(f"{DEXSCREENER_TOKENS}/{token_address}", timeout=8)
     if data and isinstance(data.get("pairs"), list):
         return data["pairs"]
     return []
 
 
 def _fetch_pairs_batch(addresses: list[str]) -> dict[str, list[dict]]:
-    """Fetch pair data for multiple addresses concurrently (max 5 at a time)."""
+    """Fetch pair data for multiple addresses concurrently."""
     results: dict[str, list[dict]] = {}
-    with ThreadPoolExecutor(max_workers=5) as pool:
+    with ThreadPoolExecutor(max_workers=12) as pool:
         futures = {pool.submit(_fetch_token_pairs, addr): addr for addr in addresses}
-        for fut in as_completed(futures, timeout=60):
+        for fut in as_completed(futures, timeout=45):
             addr = futures[fut]
             try:
                 results[addr] = fut.result()
