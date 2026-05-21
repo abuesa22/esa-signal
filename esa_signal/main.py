@@ -5,9 +5,11 @@ Run with: python main.py
 
 import asyncio
 import logging
+import os
 import socket
 import sys
 import time
+from pathlib import Path
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -19,6 +21,40 @@ from scheduler import setup_scheduler
 
 setup_logging()
 logger = logging.getLogger(__name__)
+
+_PID_FILE = Path(__file__).parent / ".bot.pid"
+
+
+def _pid_is_running(pid: int) -> bool:
+    try:
+        import psutil
+        return psutil.pid_exists(pid)
+    except ImportError:
+        return False
+
+
+def _acquire_lock():
+    """Prevent duplicate bot instances that cause Telegram Conflict errors."""
+    if _PID_FILE.exists():
+        try:
+            old_pid = int(_PID_FILE.read_text().strip())
+            if _pid_is_running(old_pid):
+                logger.critical(
+                    "Bot already running (PID %d) — exiting to prevent Telegram conflict.", old_pid
+                )
+                sys.exit(1)
+            else:
+                logger.warning("Stale PID file (PID %d) — overwriting.", old_pid)
+        except ValueError:
+            pass
+    _PID_FILE.write_text(str(os.getpid()))
+
+
+def _release_lock():
+    try:
+        _PID_FILE.unlink(missing_ok=True)
+    except Exception:
+        pass
 
 
 def _validate_config():
@@ -58,9 +94,9 @@ def _wait_for_network(host="api.telegram.org", port=443, timeout=300):
 
 async def main():
     _validate_config()
+    _acquire_lock()
     _wait_for_network()
 
-    # Initialise database
     init_db()
 
     # Build Telegram application
@@ -95,6 +131,7 @@ async def main():
         pass
     finally:
         logger.info("Shutting down...")
+        _release_lock()
         try:
             await send_error_alert(bot, "⚠️ ESA Signal bot is shutting down.")
         except Exception:
@@ -111,6 +148,8 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Interrupted")
+        _release_lock()
     except Exception as exc:
         logger.critical("Fatal error: %s", exc, exc_info=True)
+        _release_lock()
         sys.exit(1)

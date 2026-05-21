@@ -1,13 +1,15 @@
 """
 APScheduler setup.
-Runs all timed jobs:
-  • Crypto scanner — every 5 minutes
-  • Morning brief  — 7:00 AM AEST
-  • Midday update  — 12:00 PM AEST
-  • Evening brief  — 9:00 PM AEST
+Jobs:
+  • Crypto scanner  — every 5 minutes
+  • Graduation watcher — every 2 minutes
+  • Morning brief   — 07:00 AEST
+  • Midday update   — 12:00 AEST
+  • Evening brief   — 21:00 AEST
 """
 
 import logging
+import time
 import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
@@ -28,19 +30,29 @@ from bot.telegram_bot import (
 logger = logging.getLogger(__name__)
 AEST = pytz.timezone(TIMEZONE)
 
-_scan_count = 0
+# In-memory stats accessible by /status command
+bot_state = {
+    "scan_count": 0,
+    "signals_sent": 0,
+    "tokens_checked": 0,
+    "last_scan_at": None,
+    "last_signal_at": None,
+    "errors": 0,
+    "start_time": time.time(),
+}
 
 
 def _make_scan_job(bot: Bot):
     async def _job():
-        global _scan_count
-        _scan_count += 1
-        scan_num = _scan_count
-        logger.info("Scan #%d triggered", scan_num)
-        try:
-            import asyncio
-            from bot.telegram_bot import send_signal_async
+        import asyncio
+        from bot.telegram_bot import send_signal_async
 
+        bot_state["scan_count"] += 1
+        scan_num = bot_state["scan_count"]
+        bot_state["last_scan_at"] = time.time()
+        logger.info("Scan #%d triggered", scan_num)
+
+        try:
             loop = asyncio.get_event_loop()
             signals_found = []
 
@@ -53,27 +65,30 @@ def _make_scan_job(bot: Bot):
                     timeout=240,
                 )
             except asyncio.TimeoutError:
-                logger.error("Scan #%d timed out after 240s — skipping", scan_num)
-                await _send(bot, f"⚠️ <b>Scan #{scan_num} timed out</b> — took over 4 min, skipped.")
+                bot_state["errors"] += 1
+                logger.error("Scan #%d timed out after 240s", scan_num)
+                await _send(bot, f"⚠️ <b>Scan #{scan_num} timed out</b> — took over 4 min.")
                 return
+
+            bot_state["tokens_checked"] += tokens_checked
 
             signals_sent = 0
             for sig in signals_found:
                 try:
                     await send_signal_async(sig, bot)
                     signals_sent += 1
+                    bot_state["signals_sent"] += 1
+                    bot_state["last_signal_at"] = time.time()
                 except Exception as exc:
                     logger.error("Failed to send signal: %s", exc)
 
-            await _send(
-                bot,
-                f"🔍 <b>Scan #{scan_num} complete</b>\n"
-                f"Tokens checked: <b>{tokens_checked}</b> | "
-                f"Passed filters: <b>{passed}</b> | "
-                f"Signals sent: <b>{signals_sent}</b>",
+            logger.info(
+                "Scan #%d done — checked %d, passed %d, sent %d",
+                scan_num, tokens_checked, passed, signals_sent,
             )
 
         except Exception as exc:
+            bot_state["errors"] += 1
             logger.error("Scan job crashed: %s", exc, exc_info=True)
             try:
                 await send_error_alert(bot, f"Crypto scanner crashed:\n{exc}")
@@ -85,10 +100,9 @@ def _make_scan_job(bot: Bot):
 
 def _make_graduation_job(bot: Bot):
     async def _job():
+        import asyncio
         try:
-            import asyncio
             loop = asyncio.get_event_loop()
-
             alerts: list[str] = []
 
             def _cb(text: str):
@@ -98,7 +112,6 @@ def _make_graduation_job(bot: Bot):
                 loop.run_in_executor(None, check_graduations, _cb),
                 timeout=60,
             )
-
             for alert in alerts:
                 await _send(bot, alert)
 
@@ -112,7 +125,7 @@ def _make_graduation_job(bot: Bot):
 
 def _make_brief_job(builder_fn, bot: Bot, name: str):
     async def _job():
-        logger.info("%s brief job triggered", name)
+        logger.info("%s brief triggered", name)
         try:
             await builder_fn(bot)
         except Exception as exc:
@@ -139,7 +152,7 @@ def setup_scheduler(scheduler: AsyncIOScheduler, bot: Bot) -> AsyncIOScheduler:
         _make_graduation_job(bot),
         trigger=IntervalTrigger(minutes=2),
         id="graduation_watch",
-        name="Pump.fun Graduation Watcher",
+        name="Graduation Watcher",
         replace_existing=True,
         max_instances=1,
     )
@@ -169,7 +182,7 @@ def setup_scheduler(scheduler: AsyncIOScheduler, bot: Bot) -> AsyncIOScheduler:
     )
 
     logger.info(
-        "Scheduler configured: scan every %d min, briefs at 07:00/12:00/21:00 AEST",
+        "Scheduler ready — scan every %dmin, briefs 07:00/12:00/21:00 AEST",
         SCAN_INTERVAL_MINUTES,
     )
     return scheduler

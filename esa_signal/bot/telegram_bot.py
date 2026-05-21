@@ -11,13 +11,17 @@ from telegram.constants import ParseMode
 from telegram.error import TelegramError
 
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
-from database.db import get_stats, get_recent_signals, get_top_signals, update_outcome, save_signal
+from database.db import (
+    get_stats, get_recent_signals, get_top_signals, update_outcome,
+    save_signal, get_graduation_watchlist,
+)
 from database.models import TokenSignal
 from bot.formatters import (
     format_signal,
     format_stats,
     format_history,
     format_top_signals,
+    format_watchlist,
 )
 from markets.market_brief import build_morning_brief, build_midday_update, build_evening_brief
 from bot.researcher import research
@@ -75,21 +79,22 @@ async def send_signal_async(sig: TokenSignal, bot: Bot):
 
 async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "🤖 <b>ESA Signal Bot Online</b>\n\n"
-        "<b>Commands:</b>\n"
+        "🤖 <b>ESA Signal Bot</b> — Online\n\n"
+        "<b>Signal Commands:</b>\n"
+        "/status — Bot health, scan count, last signal\n"
+        "/scan — Trigger a manual scan now\n"
         "/stats — Win rate and signal stats\n"
         "/history — Last 10 signals\n"
         "/top — Best performing signals\n"
-        "/market — Trigger manual market brief\n"
-        "/outcome [id] [2x|5x|10x|LOSS|HOLD] — Update a signal outcome\n\n"
+        "/watchlist — Pump.fun graduation watchlist\n"
+        "/market — On-demand market brief\n"
+        "/outcome [id] [2x|5x|10x|LOSS|HOLD] — Log a result\n\n"
         "<b>Research mode:</b>\n"
-        "Just type any question — I'll research it live.\n"
-        "Examples:\n"
+        "Type any question for live AI research:\n"
         "• <i>is bitcoin going up today</i>\n"
         "• <i>find coins about trump china</i>\n"
         "• <i>what is trending on solana</i>\n"
-        "• <i>[paste a contract address]</i>\n"
-        "• <i>what is happening with oil</i>",
+        "• <i>[paste any contract address]</i>",
         parse_mode=ParseMode.HTML,
     )
 
@@ -117,6 +122,85 @@ async def cmd_market(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     except Exception as exc:
         logger.error("Manual market brief error: %s", exc)
         await update.message.reply_text(f"⚠️ Error fetching market brief: {exc}")
+
+
+async def cmd_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    from scheduler import bot_state
+    import time
+    uptime_s = int(time.time() - bot_state["start_time"])
+    h, rem = divmod(uptime_s, 3600)
+    m, s = divmod(rem, 60)
+    uptime_str = f"{h}h {m}m {s}s"
+
+    last_signal = "Never"
+    if bot_state["last_signal_at"]:
+        mins_ago = int((time.time() - bot_state["last_signal_at"]) / 60)
+        last_signal = f"{mins_ago}m ago"
+
+    last_scan = "Never"
+    if bot_state["last_scan_at"]:
+        mins_ago = int((time.time() - bot_state["last_scan_at"]) / 60)
+        last_scan = f"{mins_ago}m ago"
+
+    await update.message.reply_text(
+        f"📡 <b>ESA Signal — Status</b>\n\n"
+        f"⏱ Uptime:         {uptime_str}\n"
+        f"🔍 Scans run:      {bot_state['scan_count']}\n"
+        f"🪙 Tokens checked: {bot_state['tokens_checked']:,}\n"
+        f"🚨 Signals sent:   {bot_state['signals_sent']}\n"
+        f"⚠️ Errors:         {bot_state['errors']}\n"
+        f"🕐 Last scan:      {last_scan}\n"
+        f"📬 Last signal:    {last_signal}",
+        parse_mode=ParseMode.HTML,
+    )
+
+
+async def cmd_scan(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🔍 <b>Manual scan triggered...</b>", parse_mode=ParseMode.HTML)
+    try:
+        from scanner.crypto_scanner import scan_new_tokens
+        from scheduler import bot_state
+        import time
+
+        signals_found = []
+
+        def _cb(sig):
+            signals_found.append(sig)
+
+        loop = asyncio.get_event_loop()
+        tokens_checked, passed = await asyncio.wait_for(
+            loop.run_in_executor(None, scan_new_tokens, _cb),
+            timeout=240,
+        )
+        bot_state["scan_count"] += 1
+        bot_state["tokens_checked"] += tokens_checked
+        bot_state["last_scan_at"] = time.time()
+
+        for sig in signals_found:
+            await send_signal_async(sig, ctx.bot)
+            bot_state["signals_sent"] += 1
+            bot_state["last_signal_at"] = time.time()
+
+        await update.message.reply_text(
+            f"✅ <b>Scan complete</b>\n"
+            f"Checked: {tokens_checked} tokens\n"
+            f"Passed gates: {passed}\n"
+            f"Signals sent: {len(signals_found)}",
+            parse_mode=ParseMode.HTML,
+        )
+    except asyncio.TimeoutError:
+        await update.message.reply_text("⚠️ Scan timed out after 4 minutes.")
+    except Exception as exc:
+        logger.error("Manual scan error: %s", exc)
+        await update.message.reply_text(f"⚠️ Scan error: {exc}")
+
+
+async def cmd_watchlist(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    items = get_graduation_watchlist()
+    await update.message.reply_text(
+        format_watchlist(items), parse_mode=ParseMode.HTML,
+        disable_web_page_preview=True,
+    )
 
 
 async def cmd_outcome(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
@@ -183,12 +267,14 @@ async def cmd_research(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
 def build_application() -> Application:
     app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("status", cmd_status))
+    app.add_handler(CommandHandler("scan", cmd_scan))
     app.add_handler(CommandHandler("stats", cmd_stats))
     app.add_handler(CommandHandler("history", cmd_history))
     app.add_handler(CommandHandler("top", cmd_top))
+    app.add_handler(CommandHandler("watchlist", cmd_watchlist))
     app.add_handler(CommandHandler("market", cmd_market))
     app.add_handler(CommandHandler("outcome", cmd_outcome))
-    # Free-text messages → research mode (must be last)
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, cmd_research))
     return app
 
@@ -211,13 +297,16 @@ async def broadcast_evening(bot: Bot):
 
 
 async def send_startup_notification(bot: Bot):
+    from config import SUPPORTED_CHAINS, SCAN_INTERVAL_MINUTES, MIN_AI_SCORE
+    chains = " | ".join(c.upper() for c in SUPPORTED_CHAINS)
     await _send(
         bot,
-        "🟢 <b>ESA Signal Bot started</b>\n"
-        "Crypto scanner active — scanning every 5 min.\n"
-        "Scan reports sent after every cycle.\n"
-        "Daily briefs: 7am | 12pm | 9pm AEST.\n\n"
-        "Commands: /stats /history /top /market",
+        f"🟢 <b>ESA Signal Bot — Online</b>\n\n"
+        f"Scanning: {chains}\n"
+        f"Interval: every {SCAN_INTERVAL_MINUTES} min\n"
+        f"AI threshold: {MIN_AI_SCORE}/100\n"
+        f"Briefs: 7am | 12pm | 9pm AEST\n\n"
+        f"/status /scan /stats /history /watchlist",
     )
 
 

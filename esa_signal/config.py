@@ -22,23 +22,24 @@ COINGECKO_API_KEY: str = os.getenv("COINGECKO_API_KEY", "").strip()
 FINNHUB_API_KEY: str = os.getenv("FINNHUB_API_KEY", "").strip()
 ANTHROPIC_API_KEY: str = os.getenv("ANTHROPIC_API_KEY", "").strip()
 
-# Claude model — update here if you switch versions
-CLAUDE_MODEL = "claude-sonnet-4-20250514"
+CLAUDE_MODEL = "claude-sonnet-4-6"
 
 # ── Scanner thresholds ────────────────────────────────────────────────────────
 SCAN_INTERVAL_MINUTES = 5
+RESCAN_INTERVAL_MINUTES = 10     # re-examine same token after this many minutes
+MAX_TOKENS_PER_SCAN = 60         # cap tokens processed per cycle
 MIN_LIQUIDITY_USD = 5_000
-MAX_MARKET_CAP_USD = 10_000_000
+MAX_MARKET_CAP_USD = 15_000_000  # raised from 10M — catch mid-nano caps too
 MIN_VOLUME_24H_USD = 20_000
-MIN_AI_SCORE = 60
+MIN_AI_SCORE = 55                # lowered from 60 — surface more valid setups
 MIN_TOKEN_AGE_HOURS = 0.017      # ~1 minute
 MAX_TOKEN_AGE_HOURS = 72
-MIN_PRICE_CHANGE_1H_PCT = 0.0    # no minimum price increase required
+MIN_PRICE_CHANGE_1H_PCT = 0.0
 MAX_DEV_WALLET_PCT = 5.0
 MAX_TOP10_WALLET_PCT = 30.0
-MAX_RUGCHECK_DANGER_RISKS = 0    # zero danger-level risks allowed
+MAX_RUGCHECK_DANGER_RISKS = 0
 
-SUPPORTED_CHAINS = ["solana", "ethereum"]
+SUPPORTED_CHAINS = ["solana", "ethereum", "base"]
 
 # ── Scheduling ────────────────────────────────────────────────────────────────
 TIMEZONE = "Australia/Sydney"

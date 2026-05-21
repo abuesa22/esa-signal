@@ -26,9 +26,9 @@ RUGCHECK_BASE = "https://api.rugcheck.xyz/v1/tokens"
 
 
 def _check_rugcheck(token_address: str) -> dict:
-    """Return Rugcheck data for a Solana token. Returns {} on failure."""
+    """Return Rugcheck data for a Solana token. Returns {} on failure/timeout."""
     rate_limiter.wait("rugcheck")
-    data = http_get(f"{RUGCHECK_BASE}/{token_address}/report/summary", timeout=12)
+    data = http_get(f"{RUGCHECK_BASE}/{token_address}/report/summary", timeout=5)
     if not data:
         return {}
     return data
