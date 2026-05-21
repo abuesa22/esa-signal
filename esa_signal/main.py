@@ -15,7 +15,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from utils.helpers import setup_logging
 from config import TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, ANTHROPIC_API_KEY
-from database.db import init_db
+from database.db import init_db, prune_stale_watchlist
 from bot.telegram_bot import build_application, send_startup_notification, send_error_alert
 from scheduler import setup_scheduler
 
@@ -98,6 +98,9 @@ async def main():
     _wait_for_network()
 
     init_db()
+    pruned = prune_stale_watchlist(older_than_hours=48)
+    if pruned:
+        logger.info("Pruned %d stale watchlist entries (>48h)", pruned)
 
     # Build Telegram application
     app = build_application()

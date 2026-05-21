@@ -110,7 +110,7 @@ def _make_graduation_job(bot: Bot):
 
             await asyncio.wait_for(
                 loop.run_in_executor(None, check_graduations, _cb),
-                timeout=60,
+                timeout=50,
             )
             for alert in alerts:
                 await _send(bot, alert)

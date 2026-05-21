@@ -223,6 +223,19 @@ def mark_graduated(token_address: str):
         )
 
 
+def prune_stale_watchlist(older_than_hours: int = 48) -> int:
+    """Mark old ungraduated watchlist entries as graduated (they're dead)."""
+    with get_conn() as conn:
+        cur = conn.execute(
+            """UPDATE graduation_watchlist
+               SET graduated = 1
+               WHERE graduated = 0
+               AND first_seen < datetime('now', ?)""",
+            (f"-{older_than_hours} hours",),
+        )
+        return cur.rowcount
+
+
 def save_market_brief(brief_type: str, content: str):
     with get_conn() as conn:
         conn.execute(
